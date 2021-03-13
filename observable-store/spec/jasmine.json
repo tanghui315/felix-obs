@@ -1,0 +1,14 @@
+{
+  "spec_dir": "../observable-store",
+  "spec_files": ["**/*.spec.ts"],
+  "stopSpecOnExpectationFailure": false,
+  "random": false,
+  "reporters": [
+    {
+      "name": "jasmine-spec-reporter#SpecReporter",
+      "options": {
+        "displayStacktrace": "all"
+      }
+    }
+  ]
+}
