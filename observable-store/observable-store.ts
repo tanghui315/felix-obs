@@ -151,7 +151,7 @@ export class ObservableStore<T> {
      * be returned and it's up to the user to ensure the state isn't change from outside the store. Setting it to false can be
      * useful in cases where read-only cached data is stored and must be retrieved as quickly as possible without any cloning.
      */
-    protected getState(deepCloneReturnedState: boolean = true) : T {
+    public getState(deepCloneReturnedState: boolean = true) : T {
         return this._getStateOrSlice(deepCloneReturnedState);
     }
 
@@ -174,7 +174,7 @@ export class ObservableStore<T> {
      * to determine if the state will be deep cloned before it is added to the store. Setting it to false can be
      * useful in cases where read-only cached data is stored and must added to the store as quickly as possible without any cloning.
      */
-    protected setState(state: Partial<T> | stateFunc<T>, 
+    public setState(state: Partial<T> | stateFunc<T>, 
         action?: string, 
         dispatchState: boolean = true,
         deepCloneState: boolean = true) : T { 

@@ -21,6 +21,8 @@ type funAction<T> = (state?: T) =>Action<T>;
 class FelixObservableStore<T> extends ObservableStore<T> {
     public initialState: T;
 
+    public storeMap:Object
+
     //构造函数
     constructor(){
         super({ trackStateHistory: true, logStateChanges: true });
@@ -28,6 +30,29 @@ class FelixObservableStore<T> extends ObservableStore<T> {
             this.setState(this.initialState,StoreActions.InitializeState)
         }   
     }
+
+    //使用自定义 use hook
+    public useObservable(outState:unknown,key:string){
+        let store:ObservableStore<any>
+        if(this.storeMap[key]){
+            store = this.storeMap[key]
+        }else{
+            store = new ObservableStore({ trackStateHistory: true, logStateChanges: true })
+            store.setState(outState,StoreActions.InitializeState)
+            this.storeMap[key] = store
+        }
+        const [state,setState] = useState(outState)
+        useEffect(()=>{
+            const subject= store.stateChanged.subscribe(s=>setState(s))
+            return function(){
+                subject.unsubscribe()
+            }
+        },[])
+
+        return [state,store]
+    }
+
+
 
     public connect(CMP:ComponentType<any>,mapStateToProps:stateFunc<T>):FunctionComponent{
         return (props:unknown):JSX.Element =>{
@@ -79,4 +104,5 @@ class FelixObservableStore<T> extends ObservableStore<T> {
 
 }
 
-export default new FelixObservableStore()
+export default FelixObservableStore
+export const FelixObservableStoreInstance =new FelixObservableStore()
