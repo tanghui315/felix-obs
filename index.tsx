@@ -27,10 +27,11 @@ export interface IParams {
 
 class FelixObservableStore<T> extends ObservableStore<T> {
     //构造函数
-    constructor(method: string, state: T) {
+    constructor(method?: string, state?: T) {
         super({ trackStateHistory: false, logStateChanges: false });
-
-        this.dispatch(method,state)
+        if(method && state){
+            this.dispatch(method,state)
+        }
     }
 
     private _setState(state: complex<T> | Partial<T> | stateFunc<T>) {
@@ -113,5 +114,5 @@ export function useObservableStore<T>(initState: T, additional?: obsFunc<T>,cust
     return [state, (state) => store.dispatch(KEY,state)]
 }
 
-
+export const FelixObsInstance = new FelixObservableStore()
 export default FelixObservableStore
