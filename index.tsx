@@ -1,7 +1,8 @@
-import { ObservableStore} from "./observable-store"
+import { ObservableStore, ObservableStoreSettings} from "./observable-store"
 import React, { ComponentType,FunctionComponent, useEffect, useMemo, useState } from 'react';
 import {debounceTime,switchMap} from 'rxjs/operators';
-import { from, Observable,Observer } from 'rxjs';
+import { from, BehaviorSubject,Observable,  Subscription } from 'rxjs';
+import useConstant from 'use-constant'
 
 enum StoreActions {
     InitializeState = 'INITIALIZE_STATE',
@@ -17,42 +18,38 @@ interface Action<T>{
 }
 
 type funAction<T> = (state?: T) =>Action<T>;
+type obsFunc<T> = (obs: Observable<T>) => Observable<T>
+
+interface complex<T> { [x: string]: T; }
+export interface IParams {
+    [propName: string]: any
+}
 
 class FelixObservableStore<T> extends ObservableStore<T> {
-    public initialState: T;
-
-    public storeMap:Object
-
     //构造函数
-    constructor(){
-        super({ trackStateHistory: true, logStateChanges: true });
-        if(this.initialState){
-            this.setState(this.initialState,StoreActions.InitializeState)
-        }   
+    constructor(method: string, state: T) {
+        super({ trackStateHistory: false, logStateChanges: false });
+
+        this.dispatch(method,state)
     }
 
-    //使用自定义 use hook
-    public useObservable(outState:unknown,key:string){
-        let store:ObservableStore<any>
-        if(this.storeMap[key]){
-            store = this.storeMap[key]
-        }else{
-            store = new ObservableStore({ trackStateHistory: true, logStateChanges: true })
-            store.setState(outState,StoreActions.InitializeState)
-            this.storeMap[key] = store
+    private _setState(state: complex<T> | Partial<T> | stateFunc<T>) {
+        switch (typeof state) {
+            case 'function':
+                const newState = state(this.getState(true));
+                this.setState(newState);
+                break;
+            case 'object':
+                this.setState(state as any);
+                break;
+            default:
+                this.setState(() => state)
         }
-        const [state,setState] = useState(outState)
-        useEffect(()=>{
-            const subject= store.stateChanged.subscribe(s=>setState(s))
-            return function(){
-                subject.unsubscribe()
-            }
-        },[])
-
-        return [state,store]
     }
 
-
+    public dispatch(key:string,state: any) {
+        this._setState({ [key]: state })
+    }
 
     public connect(CMP:ComponentType<any>,mapStateToProps:stateFunc<T>):FunctionComponent{
         return (props:unknown):JSX.Element =>{
@@ -73,20 +70,6 @@ class FelixObservableStore<T> extends ObservableStore<T> {
             debounceTimes&&debounceTime(debounceTimes),
             switchMap(()=>from(ajax)) 
         ).toPromise()
-        // this.stateChanged = new Observable((observer: Observer<any>) => {
-        //     new Observable().pipe(
-        //         debounceTimes&&debounceTime(debounceTimes),
-        //         switchMap(()=>from(ajax))
-        //     ).subscribe((res)=>{
-        //         const state = callback(res)
-        //         this.setState(state)
-        //     })
-        // });
-    
-    }
-
-    dispatch(action:Action<T>){
-        this.setState(action.payload,action.type)
     }
 
     add(state:T){
@@ -104,5 +87,31 @@ class FelixObservableStore<T> extends ObservableStore<T> {
 
 }
 
+export function useObservableStore<T>(initState: T, additional?: obsFunc<T>,customKey?:string): [T, (state: T) => void] {
+    const KEY = useConstant(() =>customKey ? customKey : Math.random().toString(36).slice(-8))
+    const [state, setState] = useState(initState)
+    const store = useConstant(() => new FelixObservableStore(KEY, initState))
+    const $input = new BehaviorSubject<T>(initState)
+    useEffect(() => {
+        let customSub: Subscription
+        if (additional) {
+            customSub = additional($input).subscribe(state => {
+                state && store.dispatch(KEY,state)
+            })
+        }
+        const subscription = store.stateChanged.subscribe(state => {
+            state && setState(state[KEY])
+  
+        })
+        return function () {
+            subscription.unsubscribe()
+            customSub && customSub.unsubscribe()
+            $input.complete()
+        }
+    }, [])
+
+    return [state, (state) => store.dispatch(KEY,state)]
+}
+
+
 export default FelixObservableStore
-export const FelixObservableStoreInstance =new FelixObservableStore()
