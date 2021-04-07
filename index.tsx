@@ -30,7 +30,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     constructor(method?: string, state?: T) {
         super({ trackStateHistory: false, logStateChanges: false });
         if(method && state){
-            this.dispatch(method,state)
+            this.setState({ [method]: state } as any,undefined,false)
         }
     }
 
@@ -88,10 +88,10 @@ class FelixObservableStore<T> extends ObservableStore<T> {
 
 }
 
-export function useObservableStore<T>(initState: T, additional?: obsFunc<T>,customKey?:string): [T, (state: T) => void,string] {
+export function useObservableStore<T>(initState: T, additional?: obsFunc<T> | null,customKey?:string): [T, (state: T) => void,string] {
     const KEY = useConstant(() =>customKey ? customKey : Math.random().toString(36).slice(-8))
     const [state, setState] = useState(initState)
-    const store = useConstant(() => new FelixObservableStore())
+    const store = useConstant(() => new FelixObservableStore(KEY,initState))
     const $input = new BehaviorSubject<T>(initState)
     useEffect(() => {
         let customSub: Subscription
