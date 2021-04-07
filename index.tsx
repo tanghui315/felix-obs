@@ -88,10 +88,10 @@ class FelixObservableStore<T> extends ObservableStore<T> {
 
 }
 
-export function useObservableStore<T>(initState: T, additional?: obsFunc<T>,customKey?:string): [T, (state: T) => void] {
+export function useObservableStore<T>(initState: T, additional?: obsFunc<T>,customKey?:string): [T, (state: T) => void,string] {
     const KEY = useConstant(() =>customKey ? customKey : Math.random().toString(36).slice(-8))
     const [state, setState] = useState(initState)
-    const store = useConstant(() => new FelixObservableStore(KEY, initState))
+    const store = useConstant(() => new FelixObservableStore())
     const $input = new BehaviorSubject<T>(initState)
     useEffect(() => {
         let customSub: Subscription
@@ -111,7 +111,7 @@ export function useObservableStore<T>(initState: T, additional?: obsFunc<T>,cust
         }
     }, [])
 
-    return [state, (state) => store.dispatch(KEY,state)]
+    return [state, (state) => store.dispatch(KEY,state),KEY]
 }
 
 export const FelixObsInstance = new FelixObservableStore()
