@@ -1,7 +1,7 @@
 import { ObservableStore, ObservableStoreSettings} from "./observable-store"
 import React, { ComponentType,FunctionComponent, useEffect, useMemo, useState } from 'react';
-import {debounceTime,switchMap} from 'rxjs/operators';
-import { from, BehaviorSubject,Observable,  Subscription } from 'rxjs';
+import {debounceTime} from 'rxjs/operators';
+import { timer, BehaviorSubject,Observable,  Subscription } from 'rxjs';
 import useConstant from 'use-constant'
 
 enum StoreActions {
@@ -51,27 +51,41 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     public dispatch(key:string,state: any) {
         this._setState({ [key]: state })
     }
+    //定时清除
+    public dispatchWithTimerClean(key:string,state: T,cleanTime:number){
+        this._setState({ [key]: state })
+        timer(cleanTime*1000).subscribe(()=>{
+            let innerState = this.getState()
+            delete innerState[key] 
+            this.setState(innerState,StoreActions.RemoveState,false)
+        })
+    }
 
-    public connect(CMP:ComponentType<any>,mapStateToProps:stateFunc<T>):FunctionComponent{
+    public getStateByKey(key:string){
+        let state = this.getState()
+        return state[key]
+    }
+
+    public connect(CMP:ComponentType<any>):FunctionComponent{
         return (props:unknown):JSX.Element =>{
-            const [state,setState] = useState(mapStateToProps(this.getState()))
+            const [state,setState] = useState(this.getState())
             useEffect(()=>{
                 const subject= this.stateChanged.subscribe(s=>setState(s))
                 return function(){
                     subject.unsubscribe()
                 }
             },[])
-            return useMemo(()=><CMP {...props} store={{...state}} />,[state]) 
+            return useMemo(()=><CMP {...props} state={{...state}} />,[state]) 
         }
     }
     
 
-    ajaxform<Data>(ajax:ajaxFunc<Data>,debounceTimes?:number){
-        return new Observable().pipe(
-            debounceTimes&&debounceTime(debounceTimes),
-            switchMap(()=>from(ajax)) 
-        ).toPromise()
-    }
+    // ajaxform<Data>(ajax:ajaxFunc<Data>,debounceTimes?:number){
+    //     return new Observable().pipe(
+    //         debounceTimes&&debounceTime(debounceTimes),
+    //         switchMap(()=>from(ajax)) 
+    //     ).toPromise()
+    // }
 
     add(state:T){
         this.setState(state,StoreActions.AddState)
