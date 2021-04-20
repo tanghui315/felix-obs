@@ -63,7 +63,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
 
     public getStateByKey(key:string){
         let state = this.getState()
-        return state[key]
+        return (state&&state[key])?state[key]:null
     }
 
     public connect(CMP:ComponentType<any>):FunctionComponent{
