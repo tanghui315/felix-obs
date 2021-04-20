@@ -30,7 +30,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     constructor(method?: string, state?: T) {
         super({ trackStateHistory: false, logStateChanges: false });
         if(method && state){
-            this.setState({ [method]: state } as any,undefined,false)
+            this.setState({ [method]: state } as any,StoreActions.InitializeState,false)
         }
     }
 
