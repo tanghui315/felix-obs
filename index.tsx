@@ -54,11 +54,11 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     //定时清除
     public dispatchWithTimerClean(key:string,state: T,cleanTime:number){
         this._setState({ [key]: state })
-        timer(cleanTime*1000).subscribe(()=>{
-            let innerState = this.getState()
-            delete innerState[key] 
-            this.setState(innerState,StoreActions.RemoveState,false)
-        })
+        if(cleanTime>0){
+            timer(cleanTime*1000).subscribe(()=>{
+                this.setState({[key]:null} as any,StoreActions.RemoveState,false)
+            })
+        }
     }
 
     public getStateByKey(key:string){
