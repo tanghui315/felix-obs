@@ -56,7 +56,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     private _backIndex: number = -1  //撤销返回的标记
     //构造函数
     constructor(method?: string, state?: T) {
-        super({ trackStateHistory: false, logStateChanges: false });
+        super({ trackStateHistory: true});
         if (method && state) {
             this.setState({ [method]: state } as any, StoreActions.InitializeState, false)
         }
