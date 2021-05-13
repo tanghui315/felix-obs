@@ -56,7 +56,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     private _backIndex: number = -1  //撤销返回的标记
     //构造函数
     constructor(method?: string, state?: T) {
-        super({ trackStateHistory: true});
+        super({ trackStateHistory: true });
         if (method && state) {
             this.setState({ [method]: state } as any, StoreActions.InitializeState, false)
         }
@@ -82,14 +82,14 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     }
 
     public dispatch(key: string, state: any) {
-        if(!state){
+        if (!state) {
             return
         }
         this._setState({ [key]: state })
     }
     //定时清除
     public dispatchWithTimerClean(key: string, state: T, cleanTime: number) {
-        if(!state){
+        if (!state) {
             return
         }
         this._setState({ [key]: state })
@@ -159,41 +159,43 @@ class FelixObservableStore<T> extends ObservableStore<T> {
         }
     }
 
+    //单独的数据处理
+    public fetchDataWithoutAuto(key: string, handler: ajaxFunc<any>, setting?: AjaxSetting) {
+        const $obs = new Observable((observer) => observer.next(setting.initData ? setting.initData : null));
+        let cacheData = this.getStateByKey(key)
+   
+        return $obs.pipe(
+            setting.debounceTimes && debounceTime(setting.debounceTimes),
+            setting.throllteTimes && throttleTime(setting.throllteTimes),
+            switchMap(() => cacheData ? of(cacheData) : from(handler).pipe(
+                setting.retryCount && retryWhenDelay(setting.retryCount, setting.initialDelayTimes),
+                catchError(err => {
+                    console.log("ERROR:", err.message) //
+                    return of(null)
+                })
+            ))
+        )
+    }
+
     //接口的数据
-    public fetchData(key: string, handler: ajaxFunc<any>, isAuto: boolean = true, setting?: AjaxSetting) {
+    public fetchDataAuto(key: string, handler: ajaxFunc<any>, setting?: AjaxSetting) {
         const $obs = new Observable((observer) => observer.next(setting.initData ? setting.initData : null));
         let cacheData = null
         if (setting.fetchCacheTimes) {
             cacheData = this.getStateByKey(key)
         }
-        if (isAuto) {
-            $obs.pipe(
-                setting.debounceTimes && debounceTime(setting.debounceTimes),
-                setting.throllteTimes && throttleTime(setting.throllteTimes),
-                switchMap(() => cacheData ? of(cacheData) : from(handler).pipe(
-                    map((reslut:any)=>reslut.data?reslut.data:reslut),
-                    setting.retryCount && retryWhenDelay(setting.retryCount,setting.initialDelayTimes),
-                    catchError(err=>{
-                        console.log("ERROR:",err.message) //
-                        return of(null)
-                    })
-                )),
-                    
-            ).subscribe((data:any)=>setting.fetchCacheTimes?this.dispatchWithTimerClean(key,data,setting.fetchCacheTimes):this.dispatch(key,data))
-        } else { //后面的subscribe 交给用户自己玩
-           return $obs.pipe(
-                setting.debounceTimes && debounceTime(setting.debounceTimes),
-                setting.throllteTimes && throttleTime(setting.throllteTimes),
-                switchMap(() => cacheData ? of(cacheData) : from(handler).pipe(
-                    setting.retryCount && retryWhenDelay(setting.retryCount,setting.initialDelayTimes),
-                    catchError(err=>{
-                        console.log("ERROR:",err.message) //
-                        return of(null)
-                    })
-                ))
-            )
-        }
-
+        $obs.pipe(
+            setting.debounceTimes && debounceTime(setting.debounceTimes),
+            setting.throllteTimes && throttleTime(setting.throllteTimes),
+            switchMap(() => cacheData ? of(cacheData) : from(handler).pipe(
+                map((reslut: any) => reslut.data ? reslut.data : reslut),
+                setting.retryCount && retryWhenDelay(setting.retryCount, setting.initialDelayTimes),
+                catchError(err => {
+                    console.log("ERROR:", err.message) //
+                    return of(null)
+                })
+            )),
+        ).subscribe((data: any) => setting.fetchCacheTimes ? this.dispatchWithTimerClean(key, data, setting.fetchCacheTimes) : this.dispatch(key, data))
     }
 
     add(state: T) {
