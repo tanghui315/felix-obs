@@ -205,6 +205,23 @@ class FelixObservableStore<T> extends ObservableStore<T> {
         ).subscribe((data: any) => setting.fetchCacheTimes ? this.dispatchWithTimerClean(key, data, setting.fetchCacheTimes) : this.dispatch(key, data))
     }
 
+    //保存数据
+    public saveApiData(handler: ajaxFunc<any>,setting?: AjaxSetting,callback?:(value:any) => void){
+        const $obs = new Observable((observer) => observer.next(setting.initData ? setting.initData : null));
+        $obs.pipe(
+            setting.debounceTimes && debounceTime(setting.debounceTimes),
+            setting.throllteTimes && throttleTime(setting.throllteTimes),
+            switchMap(() => from(handler).pipe(
+                map((reslut: any) => reslut.data ? reslut.data : reslut),
+                setting.retryCount && retryWhenDelay(setting.retryCount, setting.initialDelayTimes),
+                catchError(err => {
+                    console.log("ERROR:", err.message) //
+                    return of(null)
+                })
+            )),
+        ).subscribe(callback?callback:(data)=>{ console.log("save ok") })
+    }
+
 }
 
 export function useObservableStore<T>(initState: T, additional?: obsFunc<T> | null, customKey?: string): [T, (state: T) => void, string] {
