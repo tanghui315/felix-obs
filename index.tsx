@@ -34,6 +34,7 @@ enum StoreActions {
     AddState = 'ADD_STATE',
     RemoveState = 'REMOVE_STATE',
     UpdateState = 'UPDATE_STATE',
+    UndefindState = 'UNDEFINED_STATE'
 }
 type stateFunc<T> = (state: T) => Partial<T>;
 type ajaxFunc<T> = (data: T) => Promise<any>;
@@ -81,7 +82,13 @@ class FelixObservableStore<T> extends ObservableStore<T> {
         }
     }
 
-    public dispatch(key: string, state: any) {
+    public dispatchWithoutNotify(key: string, state: T,action:StoreActions = StoreActions.UndefindState){
+        if (key && state) {
+            this.setState({ [key]: state } as any, action, false)  
+        }
+    }
+
+    public dispatch(key: string, state: T) {
         if (!state) {
             return
         }
@@ -197,19 +204,6 @@ class FelixObservableStore<T> extends ObservableStore<T> {
             )),
         ).subscribe((data: any) => setting.fetchCacheTimes ? this.dispatchWithTimerClean(key, data, setting.fetchCacheTimes) : this.dispatch(key, data))
     }
-
-    add(state: T) {
-        this.setState(state, StoreActions.AddState)
-    }
-
-    remove(state: T) {
-        this.setState(state, StoreActions.RemoveState)
-    }
-
-    updete(state: T) {
-        this.setState(state, StoreActions.UpdateState)
-    }
-
 
 }
 
