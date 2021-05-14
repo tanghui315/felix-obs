@@ -82,9 +82,9 @@ class FelixObservableStore<T> extends ObservableStore<T> {
         }
     }
 
-    public dispatchWithoutNotify(key: string, state: T,action:StoreActions = StoreActions.UndefindState){
+    public dispatchWithoutNotify(key: string, state: T, action: StoreActions = StoreActions.UndefindState) {
         if (key && state) {
-            this.setState({ [key]: state } as any, action, false)  
+            this.setState({ [key]: state } as any, action, false)
         }
     }
 
@@ -110,6 +110,10 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     public getStateByKey(key: string) {
         let state = this.getState()
         return (state && state[key]) ? state[key] : null
+    }
+
+    public getAllState() {
+        return this.getState()
     }
 
     //将数据返回到上一个状态
@@ -167,10 +171,15 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     }
 
     //单独的数据处理
-    public fetchDataWithoutAuto(key: string, handler: ajaxFunc<any>, setting?: AjaxSetting) {
+    public fetchDataWithoutAuto(keOrData: string | T, handler: ajaxFunc<any>, setting?: AjaxSetting) {
         const $obs = new Observable((observer) => observer.next(setting.initData ? setting.initData : null));
-        let cacheData = this.getStateByKey(key)
-   
+        let cacheData = null
+        if (typeof keOrData === "string") {
+            cacheData = this.getStateByKey(keOrData)
+        } else {
+            cacheData = keOrData  //自己处理传递data
+        }
+
         return $obs.pipe(
             setting.debounceTimes && debounceTime(setting.debounceTimes),
             setting.throllteTimes && throttleTime(setting.throllteTimes),
@@ -206,7 +215,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     }
 
     //保存数据
-    public saveApiData(handler: ajaxFunc<any>,setting?: AjaxSetting,callback?:(value:any) => void){
+    public saveApiData(handler: ajaxFunc<any>, setting?: AjaxSetting, callback?: (value: any) => void) {
         const $obs = new Observable((observer) => observer.next(setting.initData ? setting.initData : null));
         $obs.pipe(
             setting.debounceTimes && debounceTime(setting.debounceTimes),
@@ -219,7 +228,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
                     return of(null)
                 })
             )),
-        ).subscribe(callback?callback:(data)=>{ console.log("save ok") })
+        ).subscribe(callback ? callback : (data) => { console.log("save ok") })
     }
 
 }
