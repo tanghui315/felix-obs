@@ -171,7 +171,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     }
 
     //单独的数据处理
-    public fetchDataWithoutAuto(keOrData: string | T, handler: ajaxFunc<any>, setting?: AjaxSetting) {
+    public fetchDataWithoutAuto(keOrData: string | T | null, handler: ajaxFunc<any>, setting?: AjaxSetting) {
         const $obs = new Observable((observer) => observer.next(setting.initData ? setting.initData : null));
         let cacheData = null
         if (typeof keOrData === "string") {
@@ -231,6 +231,21 @@ class FelixObservableStore<T> extends ObservableStore<T> {
         ).subscribe(callback ? callback : (data) => { console.log("save ok") })
     }
 
+}
+//定义一个装饰器
+export function observable(target: unknown, name: string, descriptor: any) {
+    const initData = descriptor ? descriptor.initializer.call(this) : null
+    const felixStore = new FelixObservableStore(name, initData)
+    return {
+        enumerable: true,
+        configurable: true,
+        get: function () {
+            return felixStore.getStateByKey(name)
+        },
+        set: function (v: any) {
+            return felixStore.dispatch(name, v)
+        }
+    }
 }
 
 export function useObservableStore<T>(initState: T, additional?: obsFunc<T> | null, customKey?: string): [T, (state: T) => void, string] {
