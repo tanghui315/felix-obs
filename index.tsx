@@ -63,6 +63,12 @@ class FelixObservableStore<T> extends ObservableStore<T> {
         }
     }
 
+    init(method?: string, state?: T) {
+        if (method && state) {
+            this.setState({ [method]: state } as any, StoreActions.InitializeState, false)
+        }
+    }
+
     get getEmitter(): Emitter {
         return EmitterInstance
     }
@@ -172,19 +178,19 @@ class FelixObservableStore<T> extends ObservableStore<T> {
 
     //单独的数据处理
     public fetchDataWithoutAuto(keOrData: string | T | null, handler: ajaxFunc<any>, setting?: AjaxSetting) {
-        const $obs = new Observable((observer) => observer.next(setting.initData ? setting.initData : null));
+        const $obs = new Observable((observer) => observer.next((setting && setting.initData) ? setting.initData : null));
         let cacheData = null
         if (typeof keOrData === "string") {
             cacheData = this.getStateByKey(keOrData)
         } else {
             cacheData = keOrData  //自己处理传递data
         }
-
         return $obs.pipe(
-            setting.debounceTimes && debounceTime(setting.debounceTimes),
-            setting.throllteTimes && throttleTime(setting.throllteTimes),
+            (setting && setting.debounceTimes) ? debounceTime(setting.debounceTimes) : (obs) => obs,
+            (setting && setting.throllteTimes) ? throttleTime(setting.throllteTimes) : (obs) => obs,
             switchMap(() => cacheData ? of(cacheData) : from(handler).pipe(
-                setting.retryCount && retryWhenDelay(setting.retryCount, setting.initialDelayTimes),
+                map((reslut: any) => reslut.data ? reslut.data : reslut),
+                (setting && setting.retryCount) ? retryWhenDelay(setting.retryCount, setting.initialDelayTimes) : (obs) => obs,
                 catchError(err => {
                     console.log("ERROR:", err.message) //
                     return of(null)
@@ -195,17 +201,17 @@ class FelixObservableStore<T> extends ObservableStore<T> {
 
     //接口的数据
     public fetchDataAuto(key: string, handler: ajaxFunc<any>, setting?: AjaxSetting) {
-        const $obs = new Observable((observer) => observer.next(setting.initData ? setting.initData : null));
+        const $obs = new Observable((observer) => observer.next((setting && setting.initData) ? setting.initData : null));
         let cacheData = null
         if (setting.fetchCacheTimes) {
             cacheData = this.getStateByKey(key)
         }
         $obs.pipe(
-            setting.debounceTimes && debounceTime(setting.debounceTimes),
-            setting.throllteTimes && throttleTime(setting.throllteTimes),
+            (setting && setting.debounceTimes) ? debounceTime(setting.debounceTimes) : (obs) => obs,
+            (setting && setting.throllteTimes) ? throttleTime(setting.throllteTimes) : (obs) => obs,
             switchMap(() => cacheData ? of(cacheData) : from(handler).pipe(
                 map((reslut: any) => reslut.data ? reslut.data : reslut),
-                setting.retryCount && retryWhenDelay(setting.retryCount, setting.initialDelayTimes),
+                (setting && setting.retryCount) ? retryWhenDelay(setting.retryCount, setting.initialDelayTimes) : (obs) => obs,
                 catchError(err => {
                     console.log("ERROR:", err.message) //
                     return of(null)
@@ -232,21 +238,23 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     }
 
 }
+
 //定义一个装饰器
 export function observable(target: unknown, name: string, descriptor: any) {
     const initData = descriptor ? descriptor.initializer.call(this) : null
-    const felixStore = new FelixObservableStore(name, initData)
+    FelixObsInstance.init(name, initData)
     return {
         enumerable: true,
         configurable: true,
         get: function () {
-            return felixStore.getStateByKey(name)
+            return FelixObsInstance.getStateByKey(name)
         },
         set: function (v: any) {
-            return felixStore.dispatch(name, v)
+            return FelixObsInstance.dispatch(name, v)
         }
     }
 }
+
 
 export function useObservableStore<T>(initState: T, additional?: obsFunc<T> | null, customKey?: string): [T, (state: T) => void, string] {
     const KEY = useConstant(() => customKey ? customKey : Math.random().toString(36).slice(-8))
