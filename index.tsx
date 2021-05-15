@@ -222,19 +222,19 @@ class FelixObservableStore<T> extends ObservableStore<T> {
 
     //保存数据
     public saveApiData(handler: ajaxFunc<any>, setting?: AjaxSetting, callback?: (value: any) => void) {
-        const $obs = new Observable((observer) => observer.next(setting.initData ? setting.initData : null));
+        const $obs = new Observable((observer) => observer.next((setting && setting.initData) ? setting.initData : null));
         $obs.pipe(
-            setting.debounceTimes && debounceTime(setting.debounceTimes),
-            setting.throllteTimes && throttleTime(setting.throllteTimes),
+            (setting && setting.debounceTimes) ? debounceTime(setting.debounceTimes) : (obs) => obs,
+            (setting && setting.throllteTimes) ? throttleTime(setting.throllteTimes) : (obs) => obs,
             switchMap(() => from(handler).pipe(
                 map((reslut: any) => reslut.data ? reslut.data : reslut),
-                setting.retryCount && retryWhenDelay(setting.retryCount, setting.initialDelayTimes),
+                (setting && setting.retryCount) ? retryWhenDelay(setting.retryCount, setting.initialDelayTimes) : (obs) => obs,
                 catchError(err => {
                     console.log("ERROR:", err.message) //
                     return of(null)
                 })
             )),
-        ).subscribe(callback ? callback : (data) => { console.log("save ok") })
+        ).subscribe(callback ? callback : () => { console.log("save ok") })
     }
 
 }
