@@ -44,6 +44,7 @@ interface Action<T> {
     payload: T
 }
 
+
 type funAction<T> = (state?: T) => Action<T>;
 type obsFunc<T> = (obs: Observable<T>) => Observable<T>
 
@@ -52,10 +53,16 @@ export interface IParams {
     [propName: string]: any
 }
 
+interface FelixObjType {
+    [className: string]: FelixObservableStore<unknown>
+}
+
 class FelixObservableStore<T> extends ObservableStore<T> {
 
     private _backIndex: number = -1  //撤销返回的标记
-    private static instance: FelixObservableStore<unknown>;
+    private static instances: FelixObjType = {};
+
+    // static context:object = {}
     //构造函数
     constructor(method?: string, state?: T) {
         super({ trackStateHistory: true });
@@ -63,14 +70,20 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     }
 
     public static getInstance(method?: string, state?: unknown) {
-        if (!FelixObservableStore.instance) {
-            FelixObservableStore.instance = new FelixObservableStore(method, state);
-        } else {
-            FelixObservableStore.instance.init(method, state)
-        }
-        return FelixObservableStore.instance;
-    }
+        const className = this.name
+        if (!FelixObservableStore.instances || (!FelixObservableStore.instances[className])) {
+            if (className === "FelixObservableStore") {
+                FelixObservableStore.instances[className] = new FelixObservableStore(method, state)
+            } else {
+                const obj = Object.create(this.prototype);
+                FelixObservableStore.instances[className]  = new obj.constructor(obj, method, state);
+            }
 
+        } else {
+            FelixObservableStore.instances[className].init(method, state)
+        }
+        return FelixObservableStore.instances[className];
+    }
 
     init(method?: string, state?: T) {
         if (method && state) {
@@ -172,11 +185,11 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     }
 
 
-    public connect(CMP: ComponentType<any>): FunctionComponent {
+    public connect(CMP: ComponentType<any>, isGlobal: boolean = false): FunctionComponent {
         return (props: unknown): JSX.Element => {
             const [state, setState] = useState(this.getState())
             useEffect(() => {
-                const subject = this.stateChanged.subscribe(s => setState(s))
+                const subject = isGlobal ? this.globalStateChanged.subscribe(s => setState(s)) : this.stateChanged.subscribe(s => setState(s))
                 return function () {
                     subject.unsubscribe()
                 }
@@ -246,12 +259,17 @@ class FelixObservableStore<T> extends ObservableStore<T> {
         ).subscribe(callback ? callback : (data) => { console.log("save ok") })
     }
 
+
 }
 
 //定义一个装饰器
-export function observable(target: unknown, name: string, descriptor: any) {
+export function observable(target: any, name: string, descriptor: any) {
     const initData = descriptor ? descriptor.initializer.call(this) : null
-    const felixStore = FelixObservableStore.getInstance(name, initData)
+    let felixStore = FelixObservableStore.getInstance(name, initData)
+
+    if (target) {
+        felixStore = target.constructor.getInstance(name, initData)
+    }
     return {
         enumerable: true,
         configurable: true,
@@ -268,7 +286,7 @@ export function observable(target: unknown, name: string, descriptor: any) {
 export function useObservableStore<T>(initState: T, additional?: obsFunc<T> | null, customKey?: string): [T, (state: T) => void, string] {
     const KEY = useConstant(() => customKey ? customKey : Math.random().toString(36).slice(-8))
     const [state, setState] = useState(initState)
-    const store = useConstant(() => FelixObservableStore.getInstance(KEY, initState))
+    const store = useConstant(() => new FelixObservableStore(KEY, initState))
     const $input = new BehaviorSubject<T>(initState)
     useEffect(() => {
         let customSub: Subscription
