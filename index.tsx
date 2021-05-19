@@ -293,11 +293,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
 //定义一个装饰器
 export function observable(target: any, name: string, descriptor: any) {
     const initData = descriptor ? descriptor.initializer.call(this) : null
-    let felixStore = FelixObservableStore.getInstance(name, initData)
-
-    if (target) {
-        felixStore = target.constructor.getInstance(name, initData)
-    }
+    const felixStore = target ? target.constructor.getInstance(name, initData) : FelixObservableStore.getInstance(name, initData)
     return {
         enumerable: true,
         configurable: true,
