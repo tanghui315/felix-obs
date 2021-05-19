@@ -88,7 +88,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     init(method?: string, state?: T) {
         const key = method ? this._getKey(method) : ""
         const loadKey = this._getKey("loading")
-        if (key && state) {
+        if (key && (typeof state !== "undefined")) {
             this.setState({
                 [loadKey]: true,
                 [key]: state
@@ -121,14 +121,14 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     }
 
     public dispatchWithoutNotify(key: string, state: T, action: StoreActions = StoreActions.UndefindState) {
-        if (key && state) {
+        if (key && (typeof state !== "undefined")) {
             const method = this._getKey(key)
             this.setState({ [method]: state } as any, action, false)
         }
     }
 
     public dispatch(key: string, state: T) {
-        if (!state) {
+        if (typeof state === "undefined") {
             return
         }
         const method = this._getKey(key)
@@ -136,7 +136,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     }
     //定时清除
     public dispatchWithTimerClean(key: string, state: T, cleanTime: number) {
-        if (!state) {
+        if (typeof state === "undefined") {
             return
         }
         const method = this._getKey(key)
@@ -155,7 +155,18 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     }
 
     public getAllState() {
-        return this.getState()
+        const className = this.constructor.name
+        let myState = {}
+        const allState = this.getState()
+        for (const key in allState) {
+            if (Object.prototype.hasOwnProperty.call(allState, key)) {
+                if (key.indexOf(className) !== -1) {
+                    const keys = key.split('-')
+                    myState[keys[1]] = allState[key]
+                }
+            }
+        }
+        return myState
     }
 
     //将数据返回到上一个状态
