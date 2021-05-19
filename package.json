@@ -1,5 +1,5 @@
 {
-  "name": "Felix-Obs",
+  "name": "felix-obs",
   "version": "0.1",
   "author": "Felix",
   "description": "Felix-Obs provides a simple way to store and retrieve state in React and other front-end applications.",
