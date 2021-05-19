@@ -76,7 +76,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
                 FelixObservableStore.instances[className] = new FelixObservableStore(method, state)
             } else {
                 const obj = Object.create(this.prototype);
-                FelixObservableStore.instances[className] = new obj.constructor(obj, method, state);
+                FelixObservableStore.instances[className] = new obj.constructor(method, state);
             }
 
         } else {
@@ -205,6 +205,9 @@ class FelixObservableStore<T> extends ObservableStore<T> {
         return (props: unknown): JSX.Element => {
             const [state, setState] = useState(this.getState())
             const mySetState = (s: IParams) => {
+                if (!s) {
+                    return
+                }
                 let myState = {}
                 for (const key in s) {
                     if (Object.prototype.hasOwnProperty.call(s, key)) {
