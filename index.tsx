@@ -1,4 +1,4 @@
-import { ObservableStore, ObservableStoreSettings } from "./observable-store"
+import { ObservableStore } from "./observable-store"
 import React, { ComponentType, FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { debounceTime, retryWhen, scan, delayWhen, throttleTime, catchError, switchMap, map } from 'rxjs/operators';
 import { timer, BehaviorSubject, Observable, Subscription, from, of } from 'rxjs';
@@ -76,7 +76,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
                 FelixObservableStore.instances[className] = new FelixObservableStore(method, state)
             } else {
                 const obj = Object.create(this.prototype);
-                FelixObservableStore.instances[className]  = new obj.constructor(obj, method, state);
+                FelixObservableStore.instances[className] = new obj.constructor(obj, method, state);
             }
 
         } else {
@@ -86,9 +86,19 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     }
 
     init(method?: string, state?: T) {
-        if (method && state) {
-            this.setState({ [method]: state } as any, StoreActions.InitializeState, false)
+        const key = method ? this._getKey(method) : ""
+        const loadKey = this._getKey("loading")
+        if (key && state) {
+            this.setState({
+                [loadKey]: true,
+                [key]: state
+            } as any, StoreActions.InitializeState, false)
         }
+    }
+
+    private _getKey(method: string) {
+        let className = this.constructor.name
+        return `${className}-${method}`
     }
 
     get getEmitter(): Emitter {
@@ -112,7 +122,8 @@ class FelixObservableStore<T> extends ObservableStore<T> {
 
     public dispatchWithoutNotify(key: string, state: T, action: StoreActions = StoreActions.UndefindState) {
         if (key && state) {
-            this.setState({ [key]: state } as any, action, false)
+            const method = this._getKey(key)
+            this.setState({ [method]: state } as any, action, false)
         }
     }
 
@@ -120,24 +131,27 @@ class FelixObservableStore<T> extends ObservableStore<T> {
         if (!state) {
             return
         }
-        this._setState({ [key]: state })
+        const method = this._getKey(key)
+        this._setState({ [method]: state })
     }
     //定时清除
     public dispatchWithTimerClean(key: string, state: T, cleanTime: number) {
         if (!state) {
             return
         }
-        this._setState({ [key]: state })
+        const method = this._getKey(key)
+        this._setState({ [method]: state })
         if (cleanTime > 0) {
             timer(cleanTime * 1000).subscribe(() => {
-                this.setState({ [key]: null } as any, StoreActions.RemoveState, false)
+                this.setState({ [method]: null } as any, StoreActions.RemoveState, false)
             })
         }
     }
 
     public getStateByKey(key: string) {
         let state = this.getState()
-        return (state && state[key]) ? state[key] : null
+        const method = this._getKey(key)
+        return (state && state[method]) ? state[method] : null
     }
 
     public getAllState() {
@@ -185,11 +199,25 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     }
 
 
+    //连接注入sate数据
     public connect(CMP: ComponentType<any>, isGlobal: boolean = false): FunctionComponent {
+        const className = this.constructor.name
         return (props: unknown): JSX.Element => {
             const [state, setState] = useState(this.getState())
+            const mySetState = (s: IParams) => {
+                let myState = {}
+                for (const key in s) {
+                    if (Object.prototype.hasOwnProperty.call(s, key)) {
+                        if (key.indexOf(className) !== -1) {
+                            const keys = key.split('-')
+                            myState[keys[1]] = s[key]
+                        }
+                    }
+                }
+                setState(myState as any)
+            }
             useEffect(() => {
-                const subject = isGlobal ? this.globalStateChanged.subscribe(s => setState(s)) : this.stateChanged.subscribe(s => setState(s))
+                const subject = isGlobal ? this.globalStateChanged.subscribe(s => mySetState(s)) : this.stateChanged.subscribe(s => mySetState(s))
                 return function () {
                     subject.unsubscribe()
                 }
@@ -225,7 +253,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
     public fetchDataAuto(key: string, handler: ajaxFunc<any>, setting?: AjaxSetting) {
         const $obs = new Observable((observer) => observer.next((setting && setting.initData) ? setting.initData : null));
         let cacheData = null
-        if (setting.fetchCacheTimes) {
+        if (setting?.fetchCacheTimes) {
             cacheData = this.getStateByKey(key)
         }
         $obs.pipe(
@@ -239,7 +267,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
                     return of(null)
                 })
             )),
-        ).subscribe((data: any) => setting.fetchCacheTimes ? this.dispatchWithTimerClean(key, data, setting.fetchCacheTimes) : this.dispatch(key, data))
+        ).subscribe((data: any) => setting?.fetchCacheTimes ? this.dispatchWithTimerClean(key, data, setting.fetchCacheTimes) : this.dispatch(key, data))
     }
 
     //保存数据
