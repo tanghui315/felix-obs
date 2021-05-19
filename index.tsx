@@ -287,6 +287,23 @@ class FelixObservableStore<T> extends ObservableStore<T> {
         ).subscribe(callback ? callback : (data) => { console.log("save ok") })
     }
 
+    //合并控制change
+    public runInAction(fn: () => void) {
+        this.globalDispatchState = false
+        try {
+            fn.apply(this)
+        } catch (err) {
+            throw err
+        }
+        this.globalDispatchState = true
+        if (this.stateHistory) {
+            const stateHistory = this.stateHistory.pop()
+            if (stateHistory) {
+                this.setState(stateHistory.endState, stateHistory.action, true, true)
+            }
+        }
+    }
+
 
 }
 

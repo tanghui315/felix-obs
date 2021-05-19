@@ -20,6 +20,7 @@ export class ObservableStore<T> {
     private _stateDispatcher$ = new BehaviorSubject<T>(null);
     private _stateWithChangesDispatcher$ = new BehaviorSubject<StateWithPropertyChanges<T>>(null);
 
+    globalDispatchState = true //全局控制
     /**
      * Subscribe to store changes in the particlar slice of state updated by a Service. 
      * If the store contains 'n' slices of state each being managed by one of 'n' services, then changes in any 
@@ -202,7 +203,7 @@ export class ObservableStore<T> {
             });
         }
 
-        if (dispatchState) {
+        if (dispatchState && this.globalDispatchState) {
             this.dispatchState(state as any);
         }
 
