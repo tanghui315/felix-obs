@@ -1,8 +1,8 @@
 {
-  "name": "felix-obs",
+  "name": "Felix-Obs",
   "version": "0.1",
   "author": "Felix",
-  "description": "Observable Store provides a simple way to store and retrieve state in React and other front-end applications.",
+  "description": "Felix-Obs provides a simple way to store and retrieve state in React and other front-end applications.",
   "license": "MIT",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
@@ -12,16 +12,14 @@
   "keywords": [
     "store",
     "state management",
-    "Angular store",
     "React store",
-    "Vue.js store",
     "state store",
     "JavaScript store",
     "Front-end store"
   ],
   "scripts": {
     "tsc": "tsc",
-    "build": "cp ../../README.md ./ && rm -rf ./dist && tsc --build ./tsconfig.json",
+    "build": "rm -rf ./dist && tsc --build ./tsconfig.json",
     "build:w": "tsc  --build ./tsconfig.json --watch"
   },
   "peerDependencies": {
