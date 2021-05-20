@@ -1,9 +1,10 @@
 import { ObservableStore } from "./observable-store"
-import React, { ComponentType, FunctionComponent, useEffect, useMemo, useState } from 'react';
+import React, { ComponentType, FunctionComponent, useEffect, useMemo, useState, useRef } from 'react';
 import { debounceTime, retryWhen, scan, delayWhen, throttleTime, catchError, switchMap, map } from 'rxjs/operators';
 import { timer, BehaviorSubject, Observable, Subscription, from, of } from 'rxjs';
 import EmitterInstance, { Emitter } from './event-emitter'
 import useConstant from 'use-constant'
+import { isEqual } from 'lodash'
 
 //自定义一个错误重试的操作符
 const retryWhenDelay = function (count: number, initialDelayTime: number) {
@@ -211,24 +212,44 @@ class FelixObservableStore<T> extends ObservableStore<T> {
 
 
     //连接注入sate数据
-    public connect(CMP: ComponentType<any>, isGlobal: boolean = false): FunctionComponent {
+    public connect(CMP: ComponentType<any>, stateKeys: string[] = [], isGlobal: boolean = false): FunctionComponent {
         const className = this.constructor.name
+        if (stateKeys.length > 0) {
+            stateKeys.push("loading")
+        }
+        const self = this;
         return (props: unknown): JSX.Element => {
-            const [state, setState] = useState(this.getState())
+            const [state, setState] = useState(this.getAllState())
+            const stateRef = useRef();
+            stateRef.current = state as any
             const mySetState = (s: IParams) => {
                 if (!s) {
                     return
                 }
                 let myState = {}
+                let isChange = false
                 for (const key in s) {
                     if (Object.prototype.hasOwnProperty.call(s, key)) {
                         if (key.indexOf(className) !== -1) {
                             const keys = key.split('-')
-                            myState[keys[1]] = s[key]
+                            if (stateKeys.length > 0) {
+                                if (stateKeys.indexOf(keys[1]) !== -1) {
+                                    if (!isChange && !isEqual((stateRef.current as any)[keys[1]], s[key])) {
+                                        isChange = true
+                                    }
+                                    myState[keys[1]] = s[key]
+                                }
+                            } else {
+                                isChange = true
+                                myState[keys[1]] = s[key]
+                            }
+
                         }
                     }
                 }
-                setState(myState as any)
+                if (isChange) {
+                    setState(myState as any)
+                }
             }
             useEffect(() => {
                 const subject = isGlobal ? this.globalStateChanged.subscribe(s => mySetState(s)) : this.stateChanged.subscribe(s => mySetState(s))
@@ -286,19 +307,19 @@ class FelixObservableStore<T> extends ObservableStore<T> {
 
     //保存数据
     public saveApiData(handler: ajaxFunc<any>, setting?: AjaxSetting, callback?: (value: any) => void) {
-        const $obs = new Observable((observer) => observer.next(setting.initData ? setting.initData : null));
+        const $obs = new Observable((observer) => observer.next(setting?.initData ? setting.initData : null));
         $obs.pipe(
-            setting.debounceTimes && debounceTime(setting.debounceTimes),
-            setting.throllteTimes && throttleTime(setting.throllteTimes),
+            setting?.debounceTimes ? debounceTime(setting.debounceTimes) : (obs) => obs,
+            setting?.throllteTimes ? throttleTime(setting.throllteTimes) : (obs) => obs,
             switchMap(() => from(handler).pipe(
-                map((reslut: any) => reslut.data ? reslut.data : reslut),
-                setting.retryCount && retryWhenDelay(setting.retryCount, setting.initialDelayTimes),
+                map((reslut: any) => reslut?.data ? reslut.data : reslut),
+                setting?.retryCount ? retryWhenDelay(setting.retryCount, setting.initialDelayTimes) : (obs) => obs,
                 catchError(err => {
                     console.log("ERROR:", err.message) //
                     return of(null)
                 })
             )),
-        ).subscribe(callback ? callback : (data) => { console.log("save ok") })
+        ).subscribe(callback ? callback : () => { console.log("save ok") })
     }
 
     //合并控制change
