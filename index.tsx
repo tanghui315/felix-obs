@@ -319,7 +319,7 @@ class FelixObservableStore<T> extends ObservableStore<T> {
                     return of(null)
                 })
             )),
-        ).subscribe(callback ? callback : () => { console.log("save ok") })
+        ).subscribe((res) => callback ? callback(res) :console.log("save ok") )
     }
 
     //合并控制change
